@@ -5921,6 +5921,25 @@
           transform: none;
         }
       }
+
+      /* ---- Icon column in the admin categories table ----
+         Categories always had an icon, but it was only visible inside the edit form,
+         so the list could not answer "which icon does Starters use?". Neutral graphite
+         ring so it reads as data, not as another gold button. */
+      body.admin-mode .category-row-icon {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        place-items: center;
+        border: 1px solid rgba(255, 255, 255, .14);
+        border-radius: 50%;
+        background: #14171B;
+        color: #9BB0C1;
+        font-size: .86rem;
+        line-height: 1;
+      }
+
+      body.admin-mode td .category-row-icon { margin-block: 2px; }
     </style>
   </head>
   <body class="ltr">
@@ -6130,9 +6149,12 @@
 
             <div id="menuGrid" class="menu-grid hidden" aria-live="polite"></div>
             <div id="emptyState" class="empty-state">
-              <i class="fa-solid fa-utensils" style="font-size: 2rem; opacity: 0.6;"></i>
-              <h3 class="mt-3" data-i18n="emptyTitle">No dishes match this search</h3>
-              <p class="mb-0" data-i18n="emptyText">Try another keyword or category to explore more of our menu.</p>
+              <i class="fa-solid fa-utensils empty-search" style="font-size: 2rem; opacity: 0.6;"></i>
+              <i class="fa-solid fa-kitchen-set empty-unpublished hidden" style="font-size: 2rem; opacity: 0.6;"></i>
+              <h3 class="mt-3 empty-search" data-i18n="emptyTitle">No dishes match this search</h3>
+              <p class="mb-0 empty-search" data-i18n="emptyText">Try another keyword or category to explore more of our menu.</p>
+              <h3 class="mt-3 empty-unpublished hidden" data-i18n="emptyMenuTitle">The menu is being prepared</h3>
+              <p class="mb-0 empty-unpublished hidden" data-i18n="emptyMenuText">Our chef has not published any dishes yet. Please check back soon.</p>
             </div>
             <svg class="menu-items-signature" viewBox="0 0 120 18" preserveAspectRatio="none" aria-hidden="true" focusable="false">
               <defs>
@@ -6260,7 +6282,7 @@
             </a>
             <span class="status-note">
               <span class="status-dot"></span>
-              <span data-i18n="storageNote">Local demo data only</span>
+              <span data-i18n="storageNote">Saved on this device</span>
             </span>
           </div>
         </div>
@@ -6380,7 +6402,7 @@
                 <h2 class="mb-1" data-i18n="overviewHeading">Dashboard overview</h2>
                 <div class="text-muted" data-i18n="overviewSubtext">Current menu performance</div>
               </div>
-              <button id="resetDemoDataBtn" class="outline-btn" data-i18n="resetDemoButton">Reset demo data</button>
+              <button id="resetDemoDataBtn" class="outline-btn" data-i18n="resetDemoButton">Clear all menu data</button>
             </div>
 
             <div class="stats-grid" id="statsGrid"></div>
@@ -6706,6 +6728,7 @@
                     <thead>
                       <tr>
                         <th data-i18n="tableName">Name</th>
+                        <th data-i18n="tableIcon">Icon</th>
                         <th data-i18n="tableOrder">Order</th>
                         <th data-i18n="tableStatus">Status</th>
                         <th data-i18n="tableActions">Actions</th>
@@ -6787,79 +6810,10 @@
               </form>
             </div>
 
-            <!-- ── Integration keys card ─────────────────────────────── -->
-            <div class="form-card mt-4" id="integrationCard">
-              <h4 class="mb-1" style="display:flex;align-items:center;gap:10px;">
-                <i class="fa-solid fa-plug-circle-bolt" style="color:var(--muted)"></i>
-                Online integrations
-              </h4>
-              <p class="text-muted small mb-3">
-                These keys are saved in your browser session only — they are <strong>never</strong> stored in Firestore or exposed publicly.
-                Reload the page to apply changes.
-              </p>
-
-              <!-- Status badges -->
-              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.2rem;">
-                <span id="fbStatusBadge" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:.78rem;font-weight:700;border:1px solid var(--line);background:rgba(255,255,255,.06);">
-                  <i class="fa-brands fa-google" style="font-size:.9rem"></i>
-                  <span id="fbStatusLabel">Firebase: not configured</span>
-                </span>
-                <span id="imgbbStatusBadge" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:.78rem;font-weight:700;border:1px solid var(--line);background:rgba(255,255,255,.06);">
-                  <i class="fa-solid fa-image" style="font-size:.9rem"></i>
-                  <span id="imgbbStatusLabel">ImgBB: not configured</span>
-                </span>
-              </div>
-
-              <div class="form-grid" style="gap:14px;">
-                <!-- ImgBB -->
-                <div class="form-field full">
-                  <label style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-solid fa-image" style="color:var(--muted)"></i>
-                    ImgBB API Key
-                    <a href="https://api.imgbb.com/" target="_blank" rel="noopener" style="font-size:.75rem;color:var(--muted);margin-left:auto;">Get free key ↗</a>
-                  </label>
-                  <input id="settingImgbbKey" type="password" placeholder="Paste your ImgBB key here…" autocomplete="off" />
-                  <span class="text-muted" style="font-size:.76rem;margin-top:4px;display:block;">Free · 32 MB per image · No expiry · No Firebase Storage needed</span>
-                </div>
-
-                <!-- Firebase keys -->
-                <div class="form-field full">
-                  <label style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-brands fa-google" style="color:var(--muted)"></i>
-                    Firebase API Key
-                    <a href="https://console.firebase.google.com/" target="_blank" rel="noopener" style="font-size:.75rem;color:var(--muted);margin-left:auto;">Firebase Console ↗</a>
-                  </label>
-                  <input id="settingFbApiKey" type="password" placeholder="AIzaSy…" autocomplete="off" />
-                </div>
-                <div class="form-field">
-                  <label>Firebase Project ID</label>
-                  <input id="settingFbProjectId" type="text" placeholder="my-project-id" autocomplete="off" />
-                </div>
-                <div class="form-field">
-                  <label>Firebase Auth Domain</label>
-                  <input id="settingFbAuthDomain" type="text" placeholder="my-project.firebaseapp.com" autocomplete="off" />
-                </div>
-                <div class="form-field">
-                  <label>Firebase App ID</label>
-                  <input id="settingFbAppId" type="text" placeholder="1:123456:web:abc…" autocomplete="off" />
-                </div>
-                <div class="form-field">
-                  <label>Firebase Messaging Sender ID</label>
-                  <input id="settingFbMessagingSenderId" type="text" placeholder="123456789" autocomplete="off" />
-                </div>
-              </div>
-
-              <div class="form-actions mt-3" style="gap:12px;">
-                <button type="button" id="saveIntegrationBtn" class="premium-btn">
-                  <i class="fa-solid fa-floppy-disk"></i>
-                  Apply &amp; reconnect
-                </button>
-                <button type="button" id="clearIntegrationBtn" class="outline-btn">
-                  <i class="fa-solid fa-trash-can"></i>
-                  Clear saved keys
-                </button>
-              </div>
-            </div>
+            <!-- The "Online integrations" card was removed at the owner's request.
+                 Firebase config lives in the code block above (window.FIREBASE_CONFIG),
+                 so nothing here is needed for sync. The ImgBB / integration helpers are
+                 kept and null-guarded in case the card is ever wanted again. -->
           </section>
         </main>
       </div>
@@ -6919,8 +6873,16 @@
           data: 'zakho-menu-data',
         };
 
+        // The menu ships empty. The 11 sample dishes and 7 sample categories that
+        // used to live here are gone on purpose — the first thing a customer should
+        // see is whatever the owner adds from the admin panel, not demo food.
+        // LEGACY_DEMO_* below is only used to clean sample items out of a device's
+        // old localStorage copy; nothing here renders them.
+        const LEGACY_DEMO_PRODUCT_IDS = ['p-001','p-002','p-003','p-004','p-005','p-006','p-007','p-008','p-009','p-010','p-011'];
+        const LEGACY_DEMO_CATEGORY_IDS = ['starters','grill','mains','pizza','desserts','drinks','shisha'];
+
         const defaultData = {
-          version: 6,
+          version: 8,
           settings: {
             restaurantName: 'Zakho Bistro',
             logo: 'Zakho Bistro',
@@ -6933,182 +6895,8 @@
             defaultLanguage: 'en',
             fallbackLanguage: 'en',
           },
-          categories: [
-            { id: 'starters', icon: 'fa-solid fa-bowl-food', visible: true, order: 1, image: 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80', name: { en: 'Starters', ar: 'المقبلات', bad: 'دەستپێک', tr: 'Başlangıçlar' } },
-            { id: 'grill', icon: 'fa-solid fa-fire-flame-curved', visible: true, order: 2, image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=900&q=80', name: { en: 'Grill', ar: 'الشواء', bad: 'شخ', tr: 'Izgara' } },
-            { id: 'mains', icon: 'fa-solid fa-drumstick-bite', visible: true, order: 3, image: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80', name: { en: 'Main Plates', ar: 'الأطباق الرئيسية', bad: 'خوارنەن سەرەکێ', tr: 'Ana Yemekler' } },
-            { id: 'pizza', icon: 'fa-solid fa-pizza-slice', visible: true, order: 4, image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80', name: { en: 'Pizza', ar: 'البيتزا', bad: 'پیتزا', tr: 'Pizza' } },
-            { id: 'desserts', icon: 'fa-solid fa-cake-candles', visible: true, order: 5, image: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=900&q=80', name: { en: 'Desserts', ar: 'الحلويات', bad: 'شیرانی', tr: 'Tatlılar' } },
-            { id: 'drinks', icon: 'fa-solid fa-martini-glass-citrus', visible: true, order: 6, image: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=900&q=80', name: { en: 'Drinks', ar: 'المشروبات', bad: 'ڤەخوارن', tr: 'İçecekler' } },
-            { id: 'shisha', icon: 'fa-solid fa-utensils', visible: true, order: 7, image: '', name: { en: 'Shisha', ar: 'الشيشة', bad: 'ناڕگیلە', tr: 'Nargile' } },
-          ],
-          products: [
-            {
-              id: 'p-001',
-              categoryId: 'starters',
-              price: 15500,
-              discount: 2000,
-              available: true,
-              featured: true,
-              popular: true,
-              new: false,
-              order: 1,
-              image: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80',
-              createdAt: Date.now() - 1000 * 60 * 60 * 24 * 12,
-              name: { en: 'Charred Halloumi', ar: 'هالومي شواية', bad: 'هەلۆمی ئاگرچووی', tr: 'Közlenmiş Hellim Peyniri' },
-              description: { en: 'Grilled halloumi with pomegranate molasses, mint, and warm flatbread.', ar: 'هالومي مشوي مع دبس الرمان والنعناع وخبز مسطح دافئ.', bad: 'پەنیرێ هەلۆمی ئاگرچووی دگەل شۆربەیا نارێ، نەڤێ و نانی گەرم.', tr: 'Nar ekşisi, nane ve sıcak lavaş ekmek ile közlenmiş hellim peyniri.' },
-            },
-            {
-              id: 'p-002',
-              categoryId: 'starters',
-              price: 18500,
-              discount: 0,
-              available: true,
-              featured: false,
-              popular: true,
-              new: true,
-              order: 2,
-              image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80',
-              createdAt: Date.now() - 1000 * 60 * 60 * 24 * 5,
-              name: { en: 'Mountain Mezze Platter', ar: 'طبق ميزز المائلة', bad: 'تەپسیا میزێن چیایان', tr: 'Dağ Meze Tabağı' },
-              description: { en: 'A vibrant selection of labneh, pickles, roasted peppers, olives, and herbs.', ar: 'اختيار نابض من اللبنة والمخللات والفلفل المشوي والزيتون والأعشاب.', bad: 'هەڵبژاردنەکا ڕەنگین ژ لەبنە، ترشو، بیبەرێن ئاگرچووی، زەیتوون و ڕەشەلەن تازە.', tr: 'Labne, turşu, közlenmiş biber, zeytin ve taze otlardan oluşan renkli bir seçki.' },
-            },
-            {
-              id: 'p-003',
-              categoryId: 'grill',
-              price: 34500,
-              discount: 3500,
-              available: true,
-              featured: true,
-              popular: true,
-              new: false,
-              order: 1,
-              image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=900&q=80',
-              createdAt: Date.now() - 1000 * 60 * 60 * 24 * 17,
-              name: { en: 'Smoked Lamb Kofta', ar: 'كفتة لحم مدخنة', bad: 'کۆفتەی گۆشتێ بەرخێن دۆخەی', tr: 'Füme Kuzu Kofta' },
-              description: { en: 'Spiced lamb kofta grilled over charcoal, served with saffron rice and herbs.', ar: 'كفتة لحم متبلة على الفحم مع الأرز بالشعيرية والاعشاب.', bad: 'کۆفتەی گۆشتێ بەرخێن ب بهارات، سەر ئاگری چێتیا دا هاتییە ئاگرستن، دگەل برنجێ زەعفەران و ڕەشەلان هاتە پێشکێش کرن.', tr: 'Kömür ateşinde pişirilmiş baharatlı kuzu kofta, safranlı pilav ve taze otlarla servis edilir.' },
-            },
-            {
-              id: 'p-004',
-              categoryId: 'grill',
-              price: 31500,
-              discount: 0,
-              available: true,
-              featured: false,
-              popular: true,
-              new: false,
-              order: 2,
-              image: 'https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?auto=format&fit=crop&w=900&q=80',
-              createdAt: Date.now() - 1000 * 60 * 60 * 24 * 21,
-              name: { en: 'Zakho Mixed Grill', ar: 'مشوى زاخو المختلط', bad: 'شخا تێکەل زاخۆ', tr: 'Zakho Karışık Izgara' },
-              description: { en: 'A combination of grilled chicken, kofta, and lamb with roasted vegetables.', ar: 'مزيج من الدجاج المشوي والكفتة واللحم مع الخضار المشوية.', bad: 'تێکەلکا مریشکێ شخکری، کۆفتە و گۆشتێ بەرخێ دگەل سەوزەن ئاگرچووی.', tr: 'Izgara tavuk, kofta ve kuzu etinin közlenmiş sebzelerle sunumu.' },
-            },
-            {
-              id: 'p-005',
-              categoryId: 'mains',
-              price: 28000,
-              discount: 2500,
-              available: true,
-              featured: true,
-              popular: false,
-              new: true,
-              order: 1,
-              image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80',
-              createdAt: Date.now() - 1000 * 60 * 60 * 24 * 4,
-              name: { en: 'Saffron Herb Chicken', ar: 'دجاج بالزعفران والأعشاب', bad: 'مریشکێ زەعفەران دگەل ڕەشەلان', tr: 'Safranlı Otlu Tavuk' },
-              description: { en: 'Oven-roasted chicken with saffron, roasted garlic, crisp greens, and smooth yogurt.', ar: 'دجاج مشوي مع الزعفران والثوم المحمص والخضار المقرمشة والزبادي.', bad: 'مریشکێ فرێجداچووی دگەل زەعفەران، سیرێ برژاوی، سەوزەن قەرم و مەستێ نەرم.', tr: 'Safran, közlenmiş sarımsak, çıtır yeşillikler ve kremamsı yoğurt ile fırında tavuk.' },
-            },
-            {
-              id: 'p-006',
-              categoryId: 'mains',
-              price: 26500,
-              discount: 0,
-              available: true,
-              featured: false,
-              popular: true,
-              new: false,
-              order: 2,
-              image: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=900&q=80',
-              createdAt: Date.now() - 1000 * 60 * 60 * 24 * 31,
-              name: { en: 'Wild Mushroom Risotto', ar: 'ريزوتو الفطر البري', bad: 'ریزۆتۆی کارچێن کویى', tr: 'Yabani Mantarlı Risotto' },
-              description: { en: 'Creamy arborio rice with wild mushrooms, parmesan, lemon zest, and thyme.', ar: 'أرز أربيو كريمي بالفطر البري مع بارميزان وقشر الليمون والزعتر.', bad: 'برنجێ ئاربۆریۆ یێ قایم دگەل کارچێن کویى، پارمێزان، قەشەرخا لیمۆن و دەندک.', tr: 'Yabani mantar, parmesan, limon kabuğu ve kekik ile kremamsı arborio risottosu.' },
-            },
-            {
-              id: 'p-007',
-              categoryId: 'desserts',
-              price: 12000,
-              discount: 0,
-              available: true,
-              featured: false,
-              popular: true,
-              new: false,
-              order: 1,
-              image: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=900&q=80',
-              createdAt: Date.now() - 1000 * 60 * 60 * 24 * 8,
-              name: { en: 'Pistachio Baklava', ar: 'باقلوا الفستق', bad: 'باکڵەیا فستقێ', tr: 'Fıstıklı Baklava' },
-              description: { en: 'Layered pastry with pistachio cream, orange blossom syrup, and toasted nuts.', ar: 'معجنات طبقية مع كريمة الفستق وعسل زهرة البرتقال والمكسرات المحمصة.', bad: 'باقلەیا داری‌داری دگەل کڕێمێ فستقێ، شەربەتا گولکەیا پرتەقاڵێ و گزێن برژاوی.', tr: 'Antep fıstığı kreması, portakal çiçeği şurubu ve kavrulmuş kuruyemişlerle kat kat baklava.' },
-            },
-            {
-              id: 'p-008',
-              categoryId: 'drinks',
-              price: 7000,
-              discount: 500,
-              available: true,
-              featured: false,
-              popular: false,
-              new: true,
-              order: 1,
-              image: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=900&q=80',
-              createdAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
-              name: { en: 'Saffron Citrus Spritz', ar: 'سبرايز زعفران وليمون', bad: 'سپریتزا مۆرتەقات زەعفەران', tr: 'Safranlı Narenciye Spritz' },
-              description: { en: 'Sparkling saffron citrus cooler with lime, mint, and orange notes.', ar: 'مشروب منعش بالزعفران والليمون مع النعناع وملح الليمون.', bad: 'ڤەخوارنا تازە و ب حباب ژ زەعفەران، لیمۆ، نەڤێ و پرتەقاڵێ.', tr: 'Limon, nane ve portakal notalarıyla köpüklü safranlı narenciye içeceği.' },
-            },
-            {
-              id: 'p-009',
-              categoryId: 'mains',
-              price: 23000,
-              discount: 0,
-              available: false,
-              featured: false,
-              popular: false,
-              new: false,
-              order: 3,
-              image: 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80',
-              createdAt: Date.now() - 1000 * 60 * 60 * 24 * 45,
-              name: { en: 'Roasted Cauliflower Bowl', ar: 'وعاء القرنبيط المشوي', bad: 'قەڵتەکا کەلەمەن گوڵە', tr: 'Közlenmiş Karnabahar Kasesi' },
-              description: { en: 'A warming plant-forward bowl with cauliflower, grains, tahini, and herbs.', ar: 'وعاء دافئ مكون من القرنبيط والأرز والطحينة والأعشاب.', bad: 'قەڵتەکەکا گەرم ژ کەلەمەن گوڵە، حەبوب، تەحینە و ڕەشەلان.', tr: 'Karnabahar, tahıllar, tahin ve taze otlarla bitki ağırlıklı besleyici kase.' },
-            },
-            {
-              id: 'p-010',
-              categoryId: 'pizza',
-              price: 18000,
-              discount: 0,
-              available: true,
-              featured: true,
-              popular: true,
-              new: false,
-              order: 1,
-              image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80',
-              createdAt: Date.now() - 1000 * 60 * 60 * 24 * 3,
-              name: { en: 'Margherita', ar: 'مارغريتا', bad: 'مارگەریتا', tr: 'Margherita' },
-              description: { en: 'Wood-fired dough with tomato, fresh mozzarella, basil, and extra-virgin olive oil.', ar: 'عجينة مخبوزة على الحطب مع الطماطم والموزاريلا الطازجة والريحان وزيت الزيتون.', bad: 'نانەکی دفرێجا داریدا هاتییە پچکرن، دگەل تەماتە، مۆزارێلای تازە، ڕەیحان و زەیتێ زەیتوونا دەستێ یەکەم.', tr: 'Domates, taze mozzarella, fesleğen ve sızma zeytinyağı ile odun ateşinde pişen hamur.' },
-            },
-            {
-              id: 'p-011',
-              categoryId: 'pizza',
-              price: 24000,
-              discount: 0,
-              available: true,
-              featured: false,
-              popular: true,
-              new: true,
-              order: 2,
-              image: 'https://images.unsplash.com/photo-1571407970349-bc81e7e96d47?auto=format&fit=crop&w=900&q=80',
-              createdAt: Date.now() - 1000 * 60 * 60 * 24,
-              name: { en: 'Kurdish Garden Pizza', ar: 'بيتزا الحديقة الكردية', bad: 'پیتزا بستانا کوردی', tr: 'Kürt Bahçe Pizzası' },
-              description: { en: 'A crisp, stone-baked pizza with roasted peppers, olives, herbs, and local cheese.', ar: 'بيتزا مقرمشة مخبوزة بالحجر مع الفلفل المشوي والزيتون والأعشاب والجبن المحلي.', bad: 'پیتزایەکا قەرم و دفرێجا بەردی دا هاتییە پچکرن، دگەل بیبەرێن ئاگرچووی، زەیتوون، ڕەشەل و پەنیرێ دەردۆرێ.', tr: 'Közlenmiş biber, zeytin, taze otlar ve yöresel peynir ile taş fırında çıtır pizza.' },
-            },
-          ],
+          categories: [],
+          products: [],
         };
 
         const state = {
@@ -7165,6 +6953,8 @@
             categoryDishes: 'dishes',
             emptyTitle: 'No dishes match this search',
             emptyText: 'Try another keyword or category to explore more of our menu.',
+            emptyMenuTitle: 'The menu is being prepared',
+            emptyMenuText: 'No dishes have been published yet. Please check back soon.',
             featureFresh: 'Farm fresh',
             featureFreshText: 'Locally sourced vegetables, herbs, grains, and premium meats prepared with seasonal care.',
             featureFire: 'Open-fire cooking',
@@ -7183,7 +6973,7 @@
             footerConnect: 'Connect',
             footerMenuLink: 'View menu',
             footerBottom: '© 2026 Zakho Bistro',
-            storageNote: 'Local demo data only',
+            storageNote: 'Saved on this device',
             adminOverview: 'Overview',
             adminProducts: 'Products',
             adminCategories: 'Categories',
@@ -7191,7 +6981,7 @@
             logoutButton: 'Logout',
             overviewHeading: 'Dashboard overview',
             overviewSubtext: 'Current menu performance',
-            resetDemoButton: 'Reset demo data',
+            resetDemoButton: 'Clear all menu data',
             chartCategoryTitle: 'Products per category',
             chartAvailabilityTitle: 'Availability',
             productsHeading: 'Product management',
@@ -7220,6 +7010,7 @@
             cancelButton: 'Cancel',
             productListTitle: 'Current menu',
             tableName: 'Name',
+            tableIcon: 'Icon',
             tableCategory: 'Category',
             tablePrice: 'Price',
             tableOrder: 'Order',
@@ -7268,7 +7059,7 @@
             dropzoneAction: 'Click or drop a photo',
             photoBusy: 'Preparing photo…',
             photoHosted: 'Photo uploaded — only its link is stored with the menu.',
-            photoLocal: 'Photo saved inside the menu data. Add a free ImgBB key in Settings so photos sync as links.',
+            photoLocal: 'Photo saved inside the menu data, so it travels with the menu.',
             fieldRequiredTag: 'required',
             errNameRequired: 'Add the English name first.',
             usernameLabel: 'Username or email',
@@ -7336,6 +7127,8 @@
             categoryDishes: 'أطباق',
             emptyTitle: 'لا توجد أطباق تطابق هذا البحث',
             emptyText: 'جرّب كلمة أخرى أو فئة مختلفة لاستكشاف المزيد من القائمة.',
+            emptyMenuTitle: 'القائمة قيد التحضير',
+            emptyMenuText: 'لم تُنشر أي أطباق بعد. نرجو العودة بعد قليل.',
             featureFresh: 'طازج من المزرعة',
             featureFreshText: 'خضروات وأعشاب وحبوب ولحوم مميزة من مصادر محلية ومجهزة بعناية موسمية.',
             featureFire: 'طبخ على النار',
@@ -7354,7 +7147,7 @@
             footerConnect: 'تواصل',
             footerMenuLink: 'عرض القائمة',
             footerBottom: '© 2026 زاخو بيسترو',
-            storageNote: 'بيانات تجريبية محلية فقط',
+            storageNote: 'محفوظ على هذا الجهاز',
             adminOverview: 'نظرة عامة',
             adminProducts: 'المنتجات',
             adminCategories: 'الفئات',
@@ -7362,7 +7155,7 @@
             logoutButton: 'تسجيل الخروج',
             overviewHeading: 'نظرة عامة على لوحة التحكم',
             overviewSubtext: 'أداء القائمة الحالية',
-            resetDemoButton: 'إعادة تعيين البيانات التجريبية',
+            resetDemoButton: 'مسح كل بيانات القائمة',
             chartCategoryTitle: 'المنتجات حسب الفئة',
             chartAvailabilityTitle: 'التوفر',
             productsHeading: 'إدارة المنتجات',
@@ -7391,6 +7184,7 @@
             cancelButton: 'إلغاء',
             productListTitle: 'القائمة الحالية',
             tableName: 'الاسم',
+            tableIcon: 'الأيقونة',
             tableCategory: 'الفئة',
             tablePrice: 'السعر',
             tableOrder: 'الترتيب',
@@ -7439,7 +7233,7 @@
             dropzoneAction: 'انقر أو أفلت صورة',
             photoBusy: 'جارٍ تجهيز الصورة…',
             photoHosted: 'تم رفع الصورة — يُحفظ رابطها فقط مع القائمة.',
-            photoLocal: 'تم حفظ الصورة داخل بيانات القائمة. أضف مفتاح ImgBB مجاني من الإعدادات لتُرفع الصور كروابط.',
+            photoLocal: 'تم حفظ الصورة داخل بيانات القائمة وتُزامن معها.',
             fieldRequiredTag: 'مطلوب',
             errNameRequired: 'أدخل الاسم الإنجليزي أولًا.',
             usernameLabel: 'اسم المستخدم أو البريد الإلكتروني',
@@ -7501,6 +7295,8 @@
             categoryDishes: 'خوارن',
             emptyTitle: 'هیچ خوارنەکێ دڤە نەهات',
             emptyText: 'پەیڤەکا تر یان بەشەکێ تر هەڵبژێرە دا زێدە ببینی.',
+            emptyMenuTitle: 'مێنوو هاتینە ئامادە کرن',
+            emptyMenuText: 'هێشتا هیچ خوارنەکێ نەهاتیە چاپ کرن. تکایە دەمەکێ تر ڤێرێ ببینە.',
             featureFresh: 'تازە و سەوز',
             featureFreshText: 'سەوزە، ڕەشەلا، گۆشت و ڤەخوارنەن تازە ژ دەردۆرێن نزیک ب دڵنیایی هاتینە هێنان.',
             featureFire: 'ئاگر‌داستن',
@@ -7519,7 +7315,7 @@
             footerConnect: 'تێکلی',
             footerMenuLink: 'لیستە ببینە',
             footerBottom: '© 2026 زاخۆ بیسترو',
-            storageNote: 'تەنیا زانیاری ناڤ ئامێرێ',
+            storageNote: 'لەسەر ڤی ئامێرێ هاتیە هەلگرتن',
             adminOverview: 'پێشبینین',
             adminProducts: 'خوارن',
             adminCategories: 'بەش',
@@ -7527,7 +7323,7 @@
             logoutButton: 'دەرکەتن',
             overviewHeading: 'پانێلکا ڕێڤەبەر',
             overviewSubtext: 'کارکەتنا لێستێ',
-            resetDemoButton: 'ڤەگێرانا زانیاری نەمونە',
+            resetDemoButton: 'هەمی داتایەن مێنوی پاک بکە',
             chartCategoryTitle: 'خوارن ب بەشان',
             chartAvailabilityTitle: 'بەردەستیبوون',
             productsHeading: 'ڕێڤەبرنا خوارن',
@@ -7556,6 +7352,7 @@
             cancelButton: 'هەڵوەشاندن',
             productListTitle: 'لیستەیا ئێستا',
             tableName: 'ناڤ',
+            tableIcon: 'نیشانە',
             tableCategory: 'بەش',
             tablePrice: 'بها',
             tableOrder: 'ڕیز',
@@ -7604,7 +7401,7 @@
             dropzoneAction: 'کلیپ بکە یا وێنەیێ ڕاکێشە',
             photoBusy: 'ئامادەکرنا وێنەیێ…',
             photoHosted: 'وێنە هاتە بارکرن — تەنیا لینکا وێ د لێستێ دا هاتە هەلگرتناڤ.',
-            photoLocal: 'وێنە د ناڤ داتەیێن لێستێ دا هاتە هەلگرتناڤ. د ڕێکخستنێن دا مێفتیا ImgBB یا بەلاش زێدە بکە داکو وێنە وەک لینک بگەهن ئێنتەرنێتێ.',
+            photoLocal: 'وێنە د ناڤ داتایێن مێنوی دا هاتە هەلگرتن، دگەل مێنوی دا دبة ئۆنلاین.',
             fieldRequiredTag: 'پێویست',
             errNameRequired: 'پێشێ ناڤێ ئینگلیزی بنڤیسە.',
             usernameLabel: 'ناڤێ بەکارهێنەر یان ئیمەیڵ',
@@ -7666,6 +7463,8 @@
             categoryDishes: 'yemek',
             emptyTitle: 'Bu aramaya uyan yemek yok',
             emptyText: 'Menümüzü daha fazla keşfetmek için başka bir anahtar kelime veya kategori deneyin.',
+            emptyMenuTitle: 'Menü hazırlanıyor',
+            emptyMenuText: 'Henüz hiçbir yemek yayınlanmadı. Lütfen birazdan tekrar bakın.',
             featureFresh: 'Çiftlikten taze',
             featureFreshText: 'Mevsiminde özenle hazırlanan yerel sebze, ot, tahıl ve birinci sınıf etler.',
             featureFire: 'Ateşte pişirme',
@@ -7684,7 +7483,7 @@
             footerConnect: 'Bağlan',
             footerMenuLink: 'Menüyü gör',
             footerBottom: '© 2026 Zakho Bistro',
-            storageNote: 'Yalnızca yerel demo verisi',
+            storageNote: 'Bu cihazda kaydedildi',
             adminOverview: 'Genel Bakış',
             adminProducts: 'Ürünler',
             adminCategories: 'Kategoriler',
@@ -7692,7 +7491,7 @@
             logoutButton: 'Çıkış',
             overviewHeading: 'Panel genel bakış',
             overviewSubtext: 'Mevcut menü performansı',
-            resetDemoButton: 'Demo verisini sıfırla',
+            resetDemoButton: 'Tüm menü verilerini temizle',
             chartCategoryTitle: 'Kategoriye göre ürünler',
             chartAvailabilityTitle: 'Müsaitlik',
             productsHeading: 'Ürün yönetimi',
@@ -7721,6 +7520,7 @@
             cancelButton: 'İptal',
             productListTitle: 'Mevcut menü',
             tableName: 'Ad',
+            tableIcon: 'Simge',
             tableCategory: 'Kategori',
             tablePrice: 'Fiyat',
             tableOrder: 'Sıra',
@@ -7769,7 +7569,7 @@
             dropzoneAction: 'Tıkla ya da fotoğrafı bırak',
             photoBusy: 'Fotoğraf hazırlanıyor…',
             photoHosted: 'Fotoğraf yüklendi — menüyle yalnızca bağlantısı saklanıyor.',
-            photoLocal: 'Fotoğraf menü verisinin içinde saklandı. Ayarlar’dan ücretsiz ImgBB anahtarı ekleyin; fotoğraflar bağlantı olarak senkronize olsun.',
+            photoLocal: 'Fotoğraf menü verisinin içinde saklanır ve menüyle birlikte senkronize olur.',
             fieldRequiredTag: 'zorunlu',
             errNameRequired: 'Önce İngilizce adı yazın.',
             usernameLabel: 'Kullanıcı adı veya e-posta',
@@ -7800,6 +7600,7 @@
         };
 
         const toCurrency = value => `${Number(value).toLocaleString('en-US')} ${state.data.settings.currency}`;
+        let purgedDemoItemCount = 0;
         const getParsedData = (source) => {
           try {
             const raw = typeof source === 'string' ? source : (source && typeof source === 'object' ? source : localStorage.getItem(STORAGE_KEYS.data));
@@ -7811,6 +7612,25 @@
             const categories = Array.isArray(parsed.categories) ? parsed.categories : structuredClone(defaultData.categories);
             const products = Array.isArray(parsed.products) ? parsed.products : structuredClone(defaultData.products);
             const storedVersion = Number(parsed.version) || 0;
+            if (storedVersion < 8) {
+              // Builds before v8 shipped 11 sample dishes and 7 sample categories,
+              // so any stored copy older than that contains them. Drop the samples
+              // by their known ids and keep everything the owner added themselves;
+              // a sample category survives if one of those real items still uses it.
+              const purgedProducts = products.filter(product => !LEGACY_DEMO_PRODUCT_IDS.includes(product && product.id));
+              const usedCategoryIds = new Set(purgedProducts.map(product => product && product.categoryId));
+              const purgedCategories = categories.filter(category => {
+                if (!category) return false;
+                return !LEGACY_DEMO_CATEGORY_IDS.includes(category.id) || usedCategoryIds.has(category.id);
+              });
+              if (purgedProducts.length !== products.length || purgedCategories.length !== categories.length) {
+                purgedDemoItemCount = products.length - purgedProducts.length;
+              }
+              products.length = 0;
+              products.push(...purgedProducts);
+              categories.length = 0;
+              categories.push(...purgedCategories);
+            }
             if (storedVersion < 2) {
               const pizzaCategory = defaultData.categories.find(category => category.id === 'pizza');
               if (pizzaCategory && !categories.some(category => category.id === pizzaCategory.id)) {
@@ -7868,7 +7688,7 @@
               });
             }
             return {
-              version: 7,
+              version: 8,
               settings: { ...defaultData.settings, ...(parsed.settings || {}) },
               categories,
               products,
@@ -7885,7 +7705,7 @@
             Swal.fire({
               icon: 'warning',
               title: 'Storage limit reached',
-              text: 'The browser storage is full. Please reduce uploaded image sizes or clear old demo data.',
+              text: 'The browser storage is full. Please reduce uploaded image sizes or clear items you no longer use.',
               confirmButtonText: 'Okay',
             });
           }
@@ -7996,7 +7816,7 @@
           blocked:      { label: 'Firestore API is disabled',     dot: '#E06A5A', hint: 'Firebase Console → Build → Firestore Database → Create database (or enable the Cloud Firestore API for this project).' },
           timeout:      { label: 'No answer from Firestore',      dot: '#E06A5A', hint: () => 'The Cloud Firestore API is not switched on for this project yet. Open console.developers.google.com/apis/api/firestore.googleapis.com/overview?project=' + ((window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.projectId) || 'your-project-id') + ', press Enable, wait a minute, then reload this page.' },
           pending:      { label: 'Edits pending upload',          dot: '#E0A63C', hint: 'Saved on this device, but Firestore has not confirmed them yet. Check the connection — or that the database exists in this Firebase project.' },
-          toobig:       { label: 'Photos too large to sync',      dot: '#E06A5A', hint: 'Add a free ImgBB key in Settings → Online integrations so images sync as links instead of inside the menu.' },
+          toobig:       { label: 'Photos too large to sync',      dot: '#E06A5A', hint: 'The menu data is over the 1 MB Firestore document limit. Remove some dishes or use smaller photos.' },
           offline:      { label: 'No internet — saved on device', dot: '#E0A63C', hint: 'Your edits stay on this device until the connection returns.' },
         };
 
@@ -8078,7 +7898,7 @@
               const size = JSON.stringify(payload).length;
               if (size > 900000) {
                 setSyncState('toobig');
-                console.warn('[Zakho Menu] Menu is ~' + Math.round(size / 1024) + 'KB, over the ~1MB Firestore limit. Add an ImgBB key in Settings so photos sync as links.');
+                console.warn('[Zakho Menu] Menu is ~' + Math.round(size / 1024) + 'KB, over the ~1MB Firestore limit — use smaller photos or remove dishes.');
                 return;
               }
               const writeAck = cloudDb.doc(window.MENU_DOC_PATH).set(payload);
@@ -8717,6 +8537,11 @@
           const products = getFilteredProducts();
           if (!products.length) {
             menuGrid.innerHTML = '';
+            // "Nothing published yet" and "your filter matched nothing" are different
+            // messages, so the empty state carries both variants and shows one.
+            const nothingPublished = !state.data.products.length;
+            emptyState.querySelectorAll('.empty-search').forEach(node => node.classList.toggle('hidden', nothingPublished));
+            emptyState.querySelectorAll('.empty-unpublished').forEach(node => node.classList.toggle('hidden', !nothingPublished));
             emptyState.classList.add('visible');
             return;
           }
@@ -9048,9 +8873,14 @@
 
         const renderCategoryTable = () => {
           const body = document.getElementById('categoryTableBody');
-          body.innerHTML = state.data.categories.map(category => `
+          body.innerHTML = state.data.categories.map(category => {
+            // The icon was only ever visible in the form, so the list now shows it —
+            // otherwise "which icon did I give Starters?" has no answer on screen.
+            const icon = (category.icon || 'fa-solid fa-bowl-food').trim();
+            return `
             <tr>
               <td>${getLocalizedValue(category.name, state.lang)}</td>
+              <td><span class="category-row-icon" title="${icon}"><i class="${icon}" aria-hidden="true"></i></span></td>
               <td>${category.order || 1}</td>
               <td>${category.visible === false ? '<span class="badge badge-unavailable">Hidden</span>' : '<span class="badge badge-popular">Visible</span>'}</td>
               <td>
@@ -9058,7 +8888,8 @@
                 <button class="tiny-action delete" data-delete-category="${category.id}" title="Delete"><i class="fa-solid fa-trash"></i></button>
               </td>
             </tr>
-          `).join('');
+          `;
+          }).join('');
 
           body.querySelectorAll('[data-edit-category]').forEach(button => {
             button.addEventListener('click', () => populateCategoryForm(button.dataset.editCategory));
@@ -9325,7 +9156,10 @@
         };
 
         const populateIntegrationForm = () => {
+          // The integrations card is gone from the Settings panel; keep any keys the
+          // owner saved before, but there is nothing to fill in.
           try {
+            if (!document.getElementById('settingImgbbKey')) return;
             const raw = localStorage.getItem(INTEGRATION_LS_KEY);
             const saved = raw ? JSON.parse(raw) : {};
             document.getElementById('settingImgbbKey').value             = saved.imgbbKey || '';
@@ -9345,17 +9179,19 @@
           const fbLabel    = document.getElementById('fbStatusLabel');
           const imgbbBadge = document.getElementById('imgbbStatusBadge');
           const imgbbLabel = document.getElementById('imgbbStatusLabel');
-          if (!fbBadge) return;
 
-          const okStyle   = 'background:rgba(47,191,143,.13);border-color:rgba(47,191,143,.32);color:#2FBF8F;';
-          const warnStyle = 'background:rgba(224,106,90,.12);border-color:rgba(224,106,90,.3);color:#E06A5A;';
+          if (fbBadge && imgbbBadge && fbLabel && imgbbLabel) {
+            const okStyle   = 'background:rgba(47,191,143,.13);border-color:rgba(47,191,143,.32);color:#2FBF8F;';
+            const warnStyle = 'background:rgba(224,106,90,.12);border-color:rgba(224,106,90,.3);color:#E06A5A;';
 
-          fbBadge.style.cssText    = fbOk    ? okStyle : warnStyle;
-          imgbbBadge.style.cssText = imgbbOk ? okStyle : warnStyle;
-          fbLabel.textContent      = fbOk    ? (isCloudAdmin() ? '✓ Firebase: admin online' : '✓ Firebase: configured') : '✗ Firebase: not configured';
-          imgbbLabel.textContent   = imgbbOk ? '✓ ImgBB: ready'            : '✗ ImgBB: not configured';
+            fbBadge.style.cssText    = fbOk    ? okStyle : warnStyle;
+            imgbbBadge.style.cssText = imgbbOk ? okStyle : warnStyle;
+            fbLabel.textContent      = fbOk    ? (isCloudAdmin() ? '✓ Firebase: admin online' : '✓ Firebase: configured') : '✗ Firebase: not configured';
+            imgbbLabel.textContent   = imgbbOk ? '✓ ImgBB: ready'            : '✗ ImgBB: not configured';
+          }
 
-          // Also update the public footer status dot
+          // Public footer status dot — this one still matters, so it runs even
+          // without the admin card.
           const statusNote = document.querySelector('.status-note');
           const statusDot  = document.querySelector('.status-dot');
           if (statusNote && statusDot) {
@@ -9365,7 +9201,7 @@
               if (noteSpan) noteSpan.textContent = imgbbOk ? 'Online · ImgBB images' : 'Online · Firebase sync';
             } else {
               statusDot.style.background = '';
-              if (noteSpan) noteSpan.textContent = 'Local demo data only';
+              if (noteSpan) noteSpan.textContent = 'Saved on this device';
             }
           }
         };
@@ -9722,18 +9558,23 @@
           showToast('Settings saved', 'The restaurant details were updated.', 'success');
         };
 
-        const resetDemoData = () => {
+        // The old "Reset demo data" button restored the shipped sample menu. There is no
+        // sample menu any more, so the same control clears the real one: every dish and
+        // category goes, the restaurant settings stay. It writes through saveData(), so
+        // the empty state reaches Firestore too once the database is enabled.
+        const clearMenuData = () => {
           Swal.fire({
-            title: 'Reset demo data?',
-            text: 'This will restore the sample restaurant menu and reset your local edits.',
+            title: 'Clear the whole menu?',
+            text: 'Every dish and category is removed from this device and from the online menu. Your restaurant settings are kept.',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Reset',
+            confirmButtonText: 'Clear',
             cancelButtonText: 'Cancel',
+            focusCancel: true,
           }).then(result => {
             if (!result.isConfirmed) return;
-            localStorage.removeItem(STORAGE_KEYS.data);
-            state.data = structuredClone(defaultData);
+            state.data = { ...structuredClone(defaultData), settings: state.data.settings };
+            purgedDemoItemCount = 0;
             saveData();
             applyLanguage();
             renderMenu();
@@ -9743,7 +9584,7 @@
             resetProductForm();
             resetCategoryForm();
             populateSettingsForm();
-            showToast('Demo data restored', 'The menu returned to its default sample state.', 'success');
+            showToast('Menu cleared', 'All dishes and categories were removed.', 'success');
           });
         };
 
@@ -9976,7 +9817,7 @@
               syncChip.classList.toggle('is-open');
             });
           }
-          document.getElementById('resetDemoDataBtn').addEventListener('click', resetDemoData);
+          document.getElementById('resetDemoDataBtn').addEventListener('click', clearMenuData);
           document.getElementById('cancelProductEditBtn').addEventListener('click', resetProductForm);
           document.getElementById('cancelCategoryEditBtn').addEventListener('click', resetCategoryForm);
           document.getElementById('productForm').addEventListener('submit', handleProductSubmit);
@@ -9993,7 +9834,7 @@
           document.getElementById('reserveButton').addEventListener('click', () => {
             Swal.fire({
               title: 'Reservation requested',
-              text: 'A table reservation request has been prepared for this demo experience.',
+              text: 'A table reservation request is ready to send to the restaurant.',
               icon: 'info',
               confirmButtonText: 'OK',
             });
@@ -10066,7 +9907,11 @@
           document.getElementById('languageSelector').value = state.lang;
 
           // ---- Integration panel buttons ----
-          document.getElementById('saveIntegrationBtn').addEventListener('click', () => {
+          // The Settings card was removed, so these listeners are optional now. The
+          // handlers themselves stay in place in case the card comes back.
+          const saveIntegrationBtn = document.getElementById('saveIntegrationBtn');
+          const clearIntegrationBtn = document.getElementById('clearIntegrationBtn');
+          if (saveIntegrationBtn) saveIntegrationBtn.addEventListener('click', () => {
             const keys = {
               imgbbKey:            (document.getElementById('settingImgbbKey').value || '').trim(),
               fbApiKey:            (document.getElementById('settingFbApiKey').value || '').trim(),
@@ -10097,7 +9942,7 @@
             }
           });
 
-          document.getElementById('clearIntegrationBtn').addEventListener('click', () => {
+          if (clearIntegrationBtn) clearIntegrationBtn.addEventListener('click', () => {
             Swal.fire({
               title: 'Clear integration keys?',
               text: 'Your ImgBB and Firebase keys will be removed from browser storage. The menu will return to local-only mode.',
@@ -10154,6 +9999,13 @@
           // Load any keys the admin previously saved from the Settings panel.
           // Must run before startCloudSync() so Firebase picks up the right config.
           loadSavedIntegrationKeys();
+
+          // getParsedData() stripped the old sample dishes out of this device's saved
+          // copy. Persist that locally — deliberately without saveData(), because a
+          // visitor's browser must never push a cleanup into the shared cloud document.
+          if (purgedDemoItemCount > 0) {
+            try { localStorage.setItem(STORAGE_KEYS.data, JSON.stringify(state.data)); } catch (e) {}
+          }
 
           document.getElementById('languageControlSlot').appendChild(document.getElementById('languageSelector'));
           setupLanguageControl();
