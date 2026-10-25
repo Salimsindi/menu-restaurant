@@ -6871,6 +6871,10 @@
           lang: 'zakho-menu-lang',
           admin: 'zakho-menu-admin',
           data: 'zakho-menu-data',
+          // Which dish/category ids the online menu is known to contain, plus whether
+          // this device still holds edits it has never confirmed there. Ids only — a
+          // few hundred bytes — so it survives a reload and a phone restart.
+          ledger: 'zakho-menu-sync-ledger',
         };
 
         // The menu ships empty. The 11 sample dishes and 7 sample categories that
@@ -7709,6 +7713,9 @@
               confirmButtonText: 'Okay',
             });
           }
+          // Only work done in the admin panel counts as "mine until the cloud says
+          // otherwise" — a visitor's browser must never claim the shared document.
+          if (state.adminLoggedIn) markLedgerDirty();
           pushToCloud();
         };
 
@@ -7816,7 +7823,9 @@
           blocked:      { label: 'Firestore API is disabled',     dot: '#E06A5A', hint: 'Firebase Console → Build → Firestore Database → Create database (or enable the Cloud Firestore API for this project).' },
           timeout:      { label: 'No answer from Firestore',      dot: '#E06A5A', hint: () => 'The Cloud Firestore API is not switched on for this project yet. Open console.developers.google.com/apis/api/firestore.googleapis.com/overview?project=' + ((window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.projectId) || 'your-project-id') + ', press Enable, wait a minute, then reload this page.' },
           pending:      { label: 'Edits pending upload',          dot: '#E0A63C', hint: 'Saved on this device, but Firestore has not confirmed them yet. Check the connection — or that the database exists in this Firebase project.' },
+          unsynced:     { label: () => { const n = unsyncedCount(); return n ? n + (n === 1 ? ' change not online yet' : ' changes not online yet') : 'Edits not online yet'; }, dot: '#E0A63C', hint: 'These dishes or categories are safe on this device, but the online menu has not accepted them. They are retried automatically and the cloud copy will never delete them.' },
           toobig:       { label: 'Photos too large to sync',      dot: '#E06A5A', hint: 'The menu data is over the 1 MB Firestore document limit. Remove some dishes or use smaller photos.' },
+          shrunk:       { label: 'Live — photos auto-shrunk',     dot: '#2FBF8F', hint: 'Online. Oversized pictures were compressed so the menu fits the 1 MB Firestore document. Upload smaller photos later if you want them sharper.' },
           offline:      { label: 'No internet — saved on device', dot: '#E0A63C', hint: 'Your edits stay on this device until the connection returns.' },
         };
 
@@ -7830,7 +7839,8 @@
           const label = document.getElementById('syncStatusLabel');
           const hint = document.getElementById('syncStatusHint');
           if (dot) dot.style.color = config.dot;
-          if (label) label.textContent = config.label;
+          // Some labels count things, so they are functions evaluated at paint time.
+          if (label) label.textContent = typeof config.label === 'function' ? config.label() : config.label;
           if (hint) {
             const hintText = typeof config.hint === 'function' ? config.hint() : config.hint;
             hint.textContent = hintText;
@@ -7880,11 +7890,128 @@
             }
             renderAdminIdentity();
             updateOfflinePassHint();
+            // Signing in as the admin is often the moment a phone finally gets permission
+            // to write — flush whatever the ledger says is still unpublished.
+            if (allowed && readLedger().dirty && state.syncStatus !== 'toobig') pushToCloud();
           });
         };
 
+        // ---- Unsynced-work ledger --------------------------------------------------
+        // Every admin save lands in localStorage first and only then tries Firestore.
+        // A rejected write, the 1 MB size guard, a dead connection, or signing in with
+        // the backup passcode all leave the work local — and the cloud snapshot that
+        // follows used to replace the whole menu, deleting that work for good. The
+        // ledger remembers which ids the online menu has confirmed, so an unconfirmed
+        // dish or category can never be overwritten away again, even across a reload.
+        let ledgerCache = null;
+
+        const ledgerIds = list => (Array.isArray(list) ? list : []).map(item => item && item.id).filter(Boolean);
+
+        const readLedger = () => {
+          if (ledgerCache) return ledgerCache;
+          let parsed = null;
+          try { parsed = JSON.parse(localStorage.getItem(STORAGE_KEYS.ledger) || 'null'); } catch (e) { parsed = null; }
+          ledgerCache = parsed && Array.isArray(parsed.products) && Array.isArray(parsed.categories)
+            ? { dirty: Boolean(parsed.dirty), at: Number(parsed.at) || 0, products: parsed.products, categories: parsed.categories }
+            : { dirty: false, at: 0, products: [], categories: [] };
+          return ledgerCache;
+        };
+
+        const writeLedger = next => {
+          ledgerCache = next;
+          try { localStorage.setItem(STORAGE_KEYS.ledger, JSON.stringify(next)); } catch (e) {}
+          return next;
+        };
+
+        // Called by saveData() from the admin panel: this device now has work the
+        // online menu has not acknowledged.
+        const markLedgerDirty = () => {
+          const ledger = readLedger();
+          ledger.dirty = true;
+          ledger.at = Date.now();
+          writeLedger(ledger);
+        };
+
+        // The server accepted exactly this payload, so every id in it is confirmed.
+        const confirmLedger = payload => writeLedger({
+          dirty: false,
+          at: Date.now(),
+          products: ledgerIds(payload && payload.products),
+          categories: ledgerIds(payload && payload.categories),
+        });
+
+        // A snapshot straight from the server is proof of what the cloud holds: fold
+        // those ids in, and once nothing local is outstanding the ledger goes clean.
+        const reconcileLedger = remoteData => {
+          const ledger = readLedger();
+          const next = {
+            dirty: ledger.dirty,
+            at: ledger.at,
+            products: Array.from(new Set([...ledger.products, ...ledgerIds(remoteData && remoteData.products)])),
+            categories: Array.from(new Set([...ledger.categories, ...ledgerIds(remoteData && remoteData.categories)])),
+          };
+          if (next.dirty) {
+            const local = { products: ledgerIds(state.data.products), categories: ledgerIds(state.data.categories) };
+            const outstanding = ['products', 'categories'].some(field =>
+              local[field].some(id => !next[field].includes(id)) || next[field].some(id => !local[field].includes(id))
+            );
+            if (!outstanding) next.dirty = false;
+          }
+          writeLedger(next);
+          return next;
+        };
+
+        // Dishes/categories on this device that the online menu has never confirmed.
+        const unsyncedCount = () => {
+          const ledger = readLedger();
+          if (!ledger.dirty) return 0;
+          let count = 0;
+          ['products', 'categories'].forEach(field => {
+            count += ledgerIds(state.data[field]).filter(id => !ledger[field].includes(id)).length;
+          });
+          return count;
+        };
+
+        // Last resort before the 1 MB guard refuses a publish: re-encode the photos in
+        // the copy being sent until the document fits. Only ever applied to items whose
+        // picture is already far past the per-photo budget, and the smaller version
+        // comes back to this device on the next snapshot, so the menu converges.
+        const SHRINK_PASSES = [[640, 0.55], [520, 0.48], [420, 0.42], [320, 0.36]];
+
+        const shrinkPhoto = dataUrl => new Promise(resolve => {
+          const source = String(dataUrl || '');
+          if (!source.startsWith('data:image/') || source.length <= IMAGE_BUDGET_CHARS) { resolve(source); return; }
+          const img = new Image();
+          img.onload = () => {
+            let smallest = source;
+            for (const [maxWidth, quality] of SHRINK_PASSES) {
+              try {
+                const encoded = encodeImageAt(img, maxWidth, quality);
+                if (encoded && encoded.length < smallest.length) smallest = encoded;
+                if (encoded && encoded.length <= IMAGE_BUDGET_CHARS) { smallest = encoded; break; }
+              } catch (e) { break; }
+            }
+            resolve(smallest);
+          };
+          img.onerror = () => resolve(source);
+          img.src = source;
+        });
+
+        const shrinkPhotosToFit = async payload => {
+          const jobs = [];
+          ['products', 'categories'].forEach(field => {
+            (payload[field] || []).forEach(item => {
+              if (item && typeof item.image === 'string' && item.image.length > IMAGE_BUDGET_CHARS) {
+                jobs.push(shrinkPhoto(item.image).then(small => { item.image = small; }));
+              }
+            });
+          });
+          if (jobs.length) await Promise.all(jobs);
+          return payload;
+        };
+
         // Debounced write of the whole menu document; skipped when we are only applying a remote update.
-        let cloudPushBlocked = false;   // last write could not go out (too big / rejected)
+        let photosWereShrunk = false;   // this publish had to compress oversized photos
 
         const pushToCloud = () => {
           if (applyingRemote || !initCloud()) return;
@@ -7894,19 +8021,42 @@
             return;
           }
           clearTimeout(cloudPushTimer);
-          cloudPushTimer = setTimeout(() => {
+          cloudPushTimer = setTimeout(async () => {
             try {
-              const payload = JSON.parse(JSON.stringify({ ...state.data, version: 8, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
-              const size = JSON.stringify(payload).length;
+              photosWereShrunk = false;
+              // Deep-copy through JSON so nothing shares references with state.data,
+              // then attach the sentinel afterwards: a FieldValue does not survive
+              // JSON.stringify, and the object it turns into would have been written
+              // to the document as a plain map instead of a server timestamp.
+              const buildPayload = () => {
+                const payload = JSON.parse(JSON.stringify({ ...state.data, version: 8 }));
+                payload.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+                return payload;
+              };
+              let payload = buildPayload();
+              // JSON.stringify ignores the sentinel, so measure the data itself.
+              const sizeOf = obj => JSON.stringify({ ...obj, updatedAt: 0 }).length;
+              let size = sizeOf(payload);
+              if (size > 900000) {
+                // The document is full because some photo inside it is huge — usually
+                // one saved before photos were compressed. Shrink those and try again,
+                // otherwise the guard silently blocks every publish forever.
+                const sizeBeforeShrink = size;
+                payload = await shrinkPhotosToFit(payload);
+                size = sizeOf(payload);
+                // shrinkPhotosToFit edits in place, so measure rather than compare refs.
+                if (size < sizeBeforeShrink) photosWereShrunk = true;
+              }
               if (size > 900000) {
                 // Do not just dim the chip: a skipped push used to look like a saved
                 // dish, and the next remote snapshot then quietly dropped it again.
-                cloudPushBlocked = true;
+                // The ledger keeps the work safe on this device until it can go out.
                 setSyncState('toobig');
                 showToast('Not published — menu too large', "Saved on this device, but the menu is over the ~1 MB Firestore limit. Use smaller photos or remove dishes.", 'warning');
                 console.warn('[Zakho Menu] Menu is ~' + Math.round(size / 1024) + 'KB, over the ~1MB Firestore limit — use smaller photos or remove dishes.');
                 return;
               }
+              const confirmedIds = { products: payload.products, categories: payload.categories };
               const writeAck = cloudDb.doc(window.MENU_DOC_PATH).set(payload);
               // set() only resolves once the server confirms. If Firestore is unreachable
               // or its API is off it hangs quietly, so warn after 10s instead of looking fine.
@@ -7917,13 +8067,17 @@
               writeAck.then(() => {
                 acked = true;
                 clearTimeout(writeTimer);
-                cloudPushBlocked = false;
-                setSyncState('live');
+                // The online menu now holds exactly this, so nothing local is at risk.
+                confirmLedger(confirmedIds);
+                setSyncState(photosWereShrunk ? 'shrunk' : 'live');
+                if (photosWereShrunk) {
+                  photosWereShrunk = false;
+                  showToast('Photos compressed', "Some pictures were shrunk so the menu fits Firestore's 1 MB document limit. Everything is online now.", 'success');
+                }
               }).catch(err => {
                 acked = true;
                 clearTimeout(writeTimer);
-                cloudPushBlocked = true;
-                setSyncState(describeCloudError(err));
+                setSyncState(unsyncedCount() ? 'unsynced' : describeCloudError(err));
                 console.error('[Zakho Menu] Firestore write failed:', err);
               });
             } catch (error) {
@@ -7967,37 +8121,57 @@
             if (snapshot.exists) {
               const remote = snapshot.data();
               delete remote.updatedAt;
-              // If the last push could not go out (size guard, rejected write), this
-              // device holds edits the cloud has never seen. A snapshot must not silently
-              // eat them, so anything local whose id is missing remotely is kept. The
-              // trade-off is deliberate: an item deleted on another device while this
-              // push was blocked can reappear until the next successful write.
-              const unsyncedLocal = cloudPushBlocked
+              // Anything this device created or edited since the cloud last confirmed
+              // is only real here — the ledger knows which ids those are. A snapshot is
+              // allowed to change everything else, but it must never delete that work,
+              // and it must not resurrect a dish the admin deleted on this device while
+              // the write was blocked. Survives a reload, unlike a session flag.
+              const ledger = readLedger();
+              const localBefore = state.data || { products: [], categories: [] };
+              const protect = ledger.dirty
                 ? {
-                    products: state.data.products || [],
-                    categories: state.data.categories || [],
+                    products: (localBefore.products || []).filter(item => item && item.id && !ledger.products.includes(item.id)),
+                    categories: (localBefore.categories || []).filter(item => item && item.id && !ledger.categories.includes(item.id)),
+                    removedProducts: ledger.products.filter(id => !(localBefore.products || []).some(item => item && item.id === id)),
+                    removedCategories: ledger.categories.filter(id => !(localBefore.categories || []).some(item => item && item.id === id)),
                   }
                 : null;
               applyingRemote = true;
               state.data = getParsedData(remote);
-              if (unsyncedLocal) {
+              if (protect) {
                 ['products', 'categories'].forEach(field => {
-                  unsyncedLocal[field].forEach(item => {
-                    if (!item || !item.id) return;
+                  const removed = field === 'products' ? protect.removedProducts : protect.removedCategories;
+                  state.data[field] = (state.data[field] || []).filter(item => !(item && removed.includes(item.id)));
+                  protect[field].forEach(item => {
                     if (!state.data[field].some(existing => existing && existing.id === item.id)) state.data[field].push(item);
                   });
                 });
               }
               try { localStorage.setItem(STORAGE_KEYS.data, JSON.stringify(state.data)); } catch (e) {}
+              // A server snapshot (not the SDK cache) proves what the cloud holds.
+              if (!meta.fromCache) reconcileLedger(remote);
               refreshAllFromData();
               applyingRemote = false;
               cloudSeeded = true;
-            } else if (!cloudSeeded) {
-              // Empty database: publish the current local/default menu once as the source of truth.
+              // If this device still has unconfirmed work and it is allowed to write,
+              // publish it now — that is how an edit made while offline or before the
+              // rules were published finally reaches the menu without another save.
+              if (ledger.dirty && isCloudAdmin()) pushToCloud();
+            } else if (!meta.fromCache && !cloudSeeded) {
+              // The server itself says the document does not exist. Only that counts as
+              // permission to publish this device's copy: the SDK's very first callback
+              // often comes from its own cache and also reports "missing" on a clean
+              // browser or a fresh phone tab, and seeding on that used to push the empty
+              // built-in defaults over the real menu — the reason items and categories
+              // disappeared again after being added.
               cloudSeeded = true;
-              pushToCloud();
+              // And never seed an empty menu; the first real publish happens through the
+              // admin panel, which writes this document anyway.
+              if ((state.data.products || []).length || (state.data.categories || []).length) pushToCloud();
             }
-            if (!meta.fromCache) setSyncState('live');
+            // "Live" only when the cloud really matches this device; unconfirmed local
+            // work gets its own honest state instead of a green chip over a lost dish.
+            if (!meta.fromCache) setSyncState(readLedger().dirty ? 'unsynced' : 'live');
             else if (meta.hasPendingWrites) setSyncState('pending');
             else if (navigator.onLine === false) setSyncState('offline');
           }, error => {
