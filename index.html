@@ -7884,6 +7884,8 @@
         };
 
         // Debounced write of the whole menu document; skipped when we are only applying a remote update.
+        let cloudPushBlocked = false;   // last write could not go out (too big / rejected)
+
         const pushToCloud = () => {
           if (applyingRemote || !initCloud()) return;
           if (!isCloudAdmin()) {
@@ -7894,10 +7896,14 @@
           clearTimeout(cloudPushTimer);
           cloudPushTimer = setTimeout(() => {
             try {
-              const payload = JSON.parse(JSON.stringify({ ...state.data, version: 7, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
+              const payload = JSON.parse(JSON.stringify({ ...state.data, version: 8, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
               const size = JSON.stringify(payload).length;
               if (size > 900000) {
+                // Do not just dim the chip: a skipped push used to look like a saved
+                // dish, and the next remote snapshot then quietly dropped it again.
+                cloudPushBlocked = true;
                 setSyncState('toobig');
+                showToast('Not published — menu too large', "Saved on this device, but the menu is over the ~1 MB Firestore limit. Use smaller photos or remove dishes.", 'warning');
                 console.warn('[Zakho Menu] Menu is ~' + Math.round(size / 1024) + 'KB, over the ~1MB Firestore limit — use smaller photos or remove dishes.');
                 return;
               }
@@ -7911,10 +7917,12 @@
               writeAck.then(() => {
                 acked = true;
                 clearTimeout(writeTimer);
+                cloudPushBlocked = false;
                 setSyncState('live');
               }).catch(err => {
                 acked = true;
                 clearTimeout(writeTimer);
+                cloudPushBlocked = true;
                 setSyncState(describeCloudError(err));
                 console.error('[Zakho Menu] Firestore write failed:', err);
               });
@@ -7959,8 +7967,27 @@
             if (snapshot.exists) {
               const remote = snapshot.data();
               delete remote.updatedAt;
+              // If the last push could not go out (size guard, rejected write), this
+              // device holds edits the cloud has never seen. A snapshot must not silently
+              // eat them, so anything local whose id is missing remotely is kept. The
+              // trade-off is deliberate: an item deleted on another device while this
+              // push was blocked can reappear until the next successful write.
+              const unsyncedLocal = cloudPushBlocked
+                ? {
+                    products: state.data.products || [],
+                    categories: state.data.categories || [],
+                  }
+                : null;
               applyingRemote = true;
               state.data = getParsedData(remote);
+              if (unsyncedLocal) {
+                ['products', 'categories'].forEach(field => {
+                  unsyncedLocal[field].forEach(item => {
+                    if (!item || !item.id) return;
+                    if (!state.data[field].some(existing => existing && existing.id === item.id)) state.data[field].push(item);
+                  });
+                });
+              }
               try { localStorage.setItem(STORAGE_KEYS.data, JSON.stringify(state.data)); } catch (e) {}
               refreshAllFromData();
               applyingRemote = false;
@@ -9292,25 +9319,39 @@
           });
         };
 
+        // One photo has to live inside the menu document, and Firestore caps a document
+        // at ~1 MiB — 3 or 4 camera shots at 1200px/0.82 blew past the 900 KB guard, the
+        // push was skipped, and the dish never reached the cloud. So keep shrinking until
+        // the encoded image fits its share of the budget.
+        const IMAGE_BUDGET_CHARS = 240000;
+        const IMAGE_PASSES = [[1200, 0.82], [1000, 0.74], [860, 0.66], [720, 0.58], [600, 0.5]];
+
+        const encodeImageAt = (img, maxWidth, quality) => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          if (width > maxWidth) {
+            const ratio = maxWidth / width;
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+          canvas.width = Math.max(1, width);
+          canvas.height = Math.max(1, height);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          return canvas.toDataURL('image/jpeg', quality);
+        };
+
         const resizeImage = file => new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = event => {
             const img = new Image();
             img.onload = () => {
-              const canvas = document.createElement('canvas');
-              const maxWidth = 1200;
-              let width = img.width;
-              let height = img.height;
-              if (width > maxWidth) {
-                const ratio = maxWidth / width;
-                width = Math.round(width * ratio);
-                height = Math.round(height * ratio);
+              let dataUrl = '';
+              for (const [maxWidth, quality] of IMAGE_PASSES) {
+                dataUrl = encodeImageAt(img, maxWidth, quality);
+                if (dataUrl.length <= IMAGE_BUDGET_CHARS) break;
               }
-              canvas.width = width;
-              canvas.height = height;
-              const ctx = canvas.getContext('2d');
-              ctx.drawImage(img, 0, 0, width, height);
-              resolve(canvas.toDataURL('image/jpeg', 0.82));
+              resolve(dataUrl);
             };
             img.onerror = () => reject(new Error('Image could not be processed'));
             img.src = event.target.result;
