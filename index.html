@@ -4324,6 +4324,9 @@
         object-fit: contain;
         position: relative;
         z-index: 2;
+        background: transparent;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
         opacity: 0;
         animation: gr-mark-in 820ms cubic-bezier(.16, 1, .3, 1) 180ms both;
       }
@@ -4332,17 +4335,17 @@
         display: none;
       }
 
-      /* ---------- Golden River intro: one-shot full-logo reveal, no idle motion ---------- */
+      /* ---------- Golden River intro: one-shot full-logo reveal, no idle motion ----------
+         Deliberately filter-free. A CSS blur/drop-shadow on this element makes some
+         mobile WebViews repaint the transparent PNG as a solid white square. */
       @keyframes gr-mark-in {
         from {
           opacity: 0;
           transform: translateY(14px) scale(.955);
-          filter: blur(9px);
         }
         to {
           opacity: 1;
           transform: none;
-          filter: blur(0) drop-shadow(0 14px 30px rgba(0, 0, 0, 0.45));
         }
       }
 
@@ -4350,12 +4353,10 @@
         from {
           opacity: 1;
           transform: none;
-          filter: blur(0) drop-shadow(0 14px 30px rgba(0, 0, 0, 0.45));
         }
         to {
           opacity: 0;
           transform: scale(1.22);
-          filter: blur(12px);
         }
       }
 
@@ -4373,8 +4374,8 @@
       }
 
       @keyframes gr-arrive-logo {
-        from { opacity: 0; transform: translateY(-18px) scale(.88); filter: blur(7px); }
-        to { opacity: 1; transform: none; filter: blur(0); }
+        from { opacity: 0; transform: translateY(-18px) scale(.88); }
+        to { opacity: 1; transform: none; }
       }
 
       /* ---------- Tapping Menu: the intro hands the screen over to the menu ----------
@@ -4837,14 +4838,14 @@
           animation: none;
           opacity: 1;
           transform: none;
-          filter: blur(0) drop-shadow(0 14px 30px rgba(0, 0, 0, 0.45));
+          filter: none;
         }
 
         .landing-overlay.is-leaving .landing-logo {
           animation: none;
           opacity: 1;
           transform: none;
-          filter: blur(0) drop-shadow(0 14px 30px rgba(0, 0, 0, 0.45));
+          filter: none;
         }
 
         .landing-overlay.is-leaving .landing-header,
